@@ -1,0 +1,49 @@
+#!/bin/bash
+function f_affichmenu() {
+	echo -e "\n"
+	echo "-------------------------------------------------------"
+	echo "Gestion de copies de sauvegarde de fichiers '.sh'"
+	echo "-------------------------------------------------------"
+	echo " S : Copies immédiates de sauvegarde"
+	echo " D : Suppression des fichiers de sauvegarde"
+	echo " L : Lister les fichiers"
+	echo " Q : Quitter"
+	echo -e "\n"
+}
+function f_createsave() {
+	nbshfiles=$(ls -1A *.sh | wc -l)
+	if [[ $nbshfiles -gt 0 ]] ; then
+		for cpsh in *.sh
+			do
+			cp $cpsh ${cpsh}.save && echo "Sauvegarde de $cpsh ==> ${cpsh}.save"
+			done
+	else
+		echo "Aucun fichier .sh trouvé dans le répertoire courant"
+	fi
+}
+function f_cleansave() {
+	nbsavefiles=$(ls -1A *.save | wc -l)
+	if [[ $nbsavefiles -gt 0 ]] ; then
+		rm -vf *.save
+		echo "Tous les fichiers de sauvegarde ont été supprimés"
+	else
+		echo "Aucun fichier de sauvegarde trouvé dans le répertoire courant"
+	fi
+}
+function f_listfiles() {
+	vert="\033[0;32m"
+	rouge="\033[0;31m"
+	noir="\033[0m"
+	nbfiles=$(ls -1A | wc -l)
+	if [[ $nbfiles -gt 0 ]] ; then
+		echo -e "Liste des fichiers .sh du dossier courant ${rouge}ne disposant pas ${noir}et ${vert}disposant ${noir}d'une sauvegarde : "
+		for sh in *.sh
+			do
+			if [[ -f ${sh}.save ]] ; then
+				echo -ne "${vert}$sh ${noir}\e"
+			else 
+				echo -ne "${rouge}$sh ${noir}\e"
+			fi
+			done
+	fi
+}

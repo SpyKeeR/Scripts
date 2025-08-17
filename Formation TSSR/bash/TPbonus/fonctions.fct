@@ -1,0 +1,89 @@
+#!/bin/bash
+function f_affichmenu() {
+	echo -e "\n"
+	echo "-----------------------------------------"
+	echo "Gestion des comptes utilisateurs"
+	echo "-----------------------------------------"
+	echo " C : Création de nouveaux comptes"
+	echo " D : Suppression de comptes existants"
+	echo " L : Afficher la liste des comptes en attente de création"
+	echo " A : Ajout de comptes à la liste de comptes à créer"
+	echo " Q : Quitter"
+	echo -e "\n"
+	read -p "Choisissez une action [C/D/L/A ou Q] : " choix
+	echo -e "\n"
+}
+function f_createaccounts() {
+	if [[ -z "$(cat /tmp/listusersmaj.txt)" ]] ; then
+		echo "Le fichier des comptes en attente de création est vide"
+	else
+		secret=$(openssl passwd -6 'iop')
+		success=0
+		fail=0
+		while read user home tampon 
+			do
+			if id "$user" &> /dev/null ; then
+				echo "$(date) - L'utilisateur $user existe déjà." | tee -a ./createaccounts.log ; fail=$(expr $fail + 1) ; continue ; 
+			elif [[ -z "$home" ]] ; then
+				sudo useradd -ms /bin/bash -p "$secret" "$user" > /dev/null 2> ./createaccounts.log || { echo "$(date) - Le compte $user n'as pas pu être créé" | tee -a ./createaccounts.log ; fail=$(expr $fail + 1) ; continue ; }
+				sudo passwd -e "$user" > /dev/null 2> ./createaccounts.log || { echo "$(date) - L'expiration du mot de passe du compte $user n'a pas fonctionné" | tee -a ./createaccounts.log ; fail=$(expr $fail + 1) ; continue ; }
+			else
+				sudo useradd -md "$home" -s /bin/bash -p "$secret" "$user" 2> ./createaccounts.log || { echo "$(date) - Le compte $user n'as pas pu être créé" | tee -a ./createaccounts.log ; fail=$(expr $fail + 1) ; continue ; }
+				sudo passwd -e "$user" > /dev/null 2> ./createaccounts.log || { echo "$(date) - L'expiration du mot de passe du compte $user n'a pas fonctionné" | tee -a ./createaccounts.log ; fail=$(expr $fail + 1) ; continue ; }
+			fi
+			success=$(expr $success + 1)
+			echo "L'utilisateur $user a bien été créé."
+			done < /tmp/listusersmaj.txt
+		if [[ $success -gt 0 ]] ; then 
+			echo "Nombre de comptes créés avec succés : $success"
+		fi
+		if [[ $success -gt 0 ]] ; then
+			echo "Nombre de comptes dont la création a echoué : $fail"
+		fi
+		echo -n "" > /tmp/listusersmaj.txt
+	fi
+}
+function f_suppaccount() {
+	read -p "Quel compte souhaitez-vous supprimer ? " suppaccount
+	if [[ -z "$suppaccount" ]] ; then
+		echo "Vous n'avez pas renseigné de compte à supprimer"
+	elif [[ "$suppaccount" == "root" ]] ; then
+		echo "Le compte root ne peut pas être supprimé."
+	elif id "$suppaccount" &> /dev/null; then
+		sudo userdel -rf "$suppaccount" &> /dev/null 
+		echo "L'utilisateur $suppaccount a bien été supprimé"
+	else 
+		echo "L'utilisateur que vous avez renseigné n'existe pas"
+	fi
+}
+function f_showlist() {
+	nbwaitingacc=0
+	if [[ -z "$(cat /tmp/listusersmaj.txt)" ]] ; then
+		echo "Le fichier des comptes en attente de création est vide"
+	else
+		while read line
+			do
+			echo "Compte en attente de création : $line"
+			nbwaitingacc=$(expr $nbwaitingacc + 1)
+			done < /tmp/listusersmaj.txt
+	echo "Nombre de comptes en attente de création : $nbwaitingacc"
+	fi
+}
+function f_addaccount2list() {
+	keepadding="o"
+	until [[ $keepadding == [nN] ]]
+		do
+		read -p "Quel est le nom d'utilisateur du compte que vous souhaitez créer ? " username
+		read -p "Quel est le chemin du répertoire personnel de l'utilisateur (Laissez vide si non personnalisé) ? " homeuser
+		if [[ -z "$username" ]] ; then
+			echo "Vous n'avez pas renseigné de nom d'utilisateur"
+		elif [[ -z "$homeuser" ]] ; then
+			echo "$username" >> /tmp/listusersmaj.txt
+			echo "L'utilisateur $username a bien été ajouté à la liste"
+		else
+			echo "$username $homeuser" >> /tmp/listusersmaj.txt
+			echo "L'utilisateur $username et son répertoire personnalisé à bien été ajouté à la liste"
+		fi
+		read -p "Souhaitez-vous continuer à ajouter des utilisateurs ? [y/Y/o/O/n/N] " keepadding
+		done
+}
