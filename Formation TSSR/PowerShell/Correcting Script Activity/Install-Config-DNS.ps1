@@ -1,5 +1,4 @@
 # Installation et configuration DNS - Cours Services réseau Windows et GNU/Linux
-# Gilles Brossier - ENI Ecole Informatique - 15/03/2018
 #
 # Installation composant
 Install-WindowsFeature dns -IncludeManagementTools
@@ -50,3 +49,4 @@ Add-DnsServerResourceRecordPtr -Name "254.7" -ZoneName "20.172.in-addr.arpa" -Al
 Add-DnsServerResourceRecordPtr -Name "254.15" -ZoneName "20.172.in-addr.arpa" -AllowUpdateAny -PtrDomainName "routeur.gilles.eni"
 # Lister le contenu de la zone
 Get-DnsServerResourceRecord -ZoneName "20.172.in-addr.arpa" | ft -AutoSize
+
