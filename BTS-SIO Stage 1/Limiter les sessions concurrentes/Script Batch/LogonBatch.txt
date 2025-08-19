@@ -1,0 +1,7 @@
+net use U: \\fileserver\%username%$
+if errorlevel 1 goto logoff
+goto continue
+:logoff
+net send localhost "You are logged in elsewhere. Please log off a the other terminal before trying again."
+logoff
+:continue

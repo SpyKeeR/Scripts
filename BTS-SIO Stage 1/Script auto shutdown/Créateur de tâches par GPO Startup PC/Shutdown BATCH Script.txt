@@ -1,0 +1,1 @@
+schtasks /create /F /sc Daily /mo 1 /St 21:00 /tn "Arrêt Ordinateur" /tr "Shutdown /s /f /t 05"

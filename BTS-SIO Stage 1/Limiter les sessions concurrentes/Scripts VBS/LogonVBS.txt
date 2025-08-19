@@ -1,0 +1,93 @@
+'== Limit User Logins
+'== Written by: James Gzowski (2010)
+'== Logon Script
+
+'== This script consists of two parts, Logon.vbs & Logoff.vbs
+'== The script is designed to prevent multiple logons on a network from different workstations
+'== This will not work for Terminal Servers where each user will login on the same server.
+'== Users NEED to logoff through the proper process otherwise the script will still assume they are logged in.
+'== If this happens, then the next user to log into their workstation will clear their session
+
+'Set Objects
+Set oShell = CreateObject( "WScript.Shell" )
+Set objFSO = CreateObject("Scripting.FileSystemObject")
+SET WshShell = createObject("WScript.shell")
+Const intForReading = 1
+Const intForWriting = 2
+Const intForAppending = 8
+ServerShare = "\\ServerNAME\UserLogins$\" 'Requires Users Full Read/Write Access
+OldSession = ""
+CurrentWorkstation = ""
+
+'Get Username & Workstation
+UserID=oShell.ExpandEnvironmentStrings("%UserName%")
+WorkstationID=oShell.ExpandEnvironmentStrings("%ComputerName%")
+
+'Check Whether Workstation Has Old Login Session and clear
+
+If objFSO.FileExists( ServerShare & WorkstationID & ".txt") Then
+	Set objFile = objFSO.OpenTextFile(ServerShare & WorkstationID & ".txt", intForReading, False)
+	Oldsession = objFile.ReadLine
+	objFile.Close
+		If objFSO.FileExists( Oldsession & ".txt" ) Then
+			objFSO.DeleteFile(ServerShare & Oldsession & ".txt")
+		End if
+End if
+	
+'Check If Users Logged In
+If objFSO.FileExists ( ServerShare & UserID & ".txt") then
+	Set objFile = objFSO.OpenTextFile(ServerShare & UserID & ".txt", intForReading, False) 
+	CurrentWorkstation = objFile.ReadLine
+	objFile.Close
+	
+	'Report Failed Login To LoginsDenied.log
+
+	If objFSO.FileExists (ServerShare & "LoginsDenied.log") then
+
+		SET ObjFile = objFSO.OpenTextFile(ServerShare & "LoginsDenied.log", intForAppending, True)
+		ObjFile.Writeline ("Date: " & Date & ", Time: " & Time & ", Workstation: " & WorkstationID & ", Username: " & UserID)
+
+	else
+		Set objFile = objFSO.CreateTextFile(ServerShare & "LoginsDenied.log")	
+		ObjFile.Writeline ("Date: " & Date & ", Time: " & Time & ", Workstation: " & WorkstationID & ", Username: " & UserID)
+
+	End If
+
+	ObjFile.Close
+
+	'Shutdown Process'
+	shutdown = "shutdown /l"
+	WshShell.Popup _
+	"You are already logged onto: " & CurrentWorkstation &  "." & vbcrlf & _
+	"If this is not you please contact the network office." & vbcrlf & vbcrlf & _
+    	"This event has be logged to track possible account misuse." & vbcrlf & vbcrlf & _
+   	"You will now be logged off",20,"Multiple User Login Detected: " & UserID,16
+	WshShell.Run(shutdown)
+	SET WshShell = Nothing
+	
+Else
+
+	'Create Text Files
+	Set objFile = objFSO.CreateTextFile(ServerShare & WorkstationID & ".txt")
+	ObjFile.Write(UserID)
+	ObjFile.Close
+	Set objFile = objFSO.CreateTextFile(ServerShare & UserID & ".txt")
+	ObjFile.Write(WorkstationID)
+	ObjFile.Close
+
+	'Report Accepted Login To LoginsAllowed.log
+	If objFSO.FileExists (ServerShare & "LoginsAllowed.log") then
+
+		SET ObjFile = objFSO.OpenTextFile(ServerShare & "LoginsAllowed.log", 8, True)
+		ObjFile.Writeline ("Date: " & Date & ", Time: " & Time & ", Workstation: " & WorkstationID & ", Username: " & UserID)
+
+	else
+		Set objFile = objFSO.CreateTextFile(ServerShare & "LoginsAllowed.log")	
+		ObjFile.Writeline ("Date: " & Date & ", Time: " & Time & ", Workstation: " & WorkstationID & ", Username: " & UserID)
+
+	End If
+
+	ObjFile.Close
+	
+
+End If

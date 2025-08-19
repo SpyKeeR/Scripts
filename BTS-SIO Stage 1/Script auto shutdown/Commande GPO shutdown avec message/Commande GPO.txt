@@ -1,0 +1,1 @@
+shutdown -s -f -t 120 -c "L'ordinateur vas s\'éteindre dans les 2 Minutes, veuillez à sauvegarder votre travail et fermer vos applications."

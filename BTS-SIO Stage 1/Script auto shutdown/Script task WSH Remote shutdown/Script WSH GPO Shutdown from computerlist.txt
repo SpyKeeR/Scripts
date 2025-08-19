@@ -1,0 +1,19 @@
+Set WSHShell = WScript.CreateObject("WScript.Shell")
+Set oFS = CreateObject("Scripting.FileSystemObject")
+
+strWarning = "L\'ordinateur vas s\'arrêter dans 5 minutes, veuillez fermer les programmes ouverts et enregistrer votre travail avant l\'extinction du poste"
+strDelay = 300	'Delay given in seconds; change this value to your preference, or set it to 0 to give no delay at all
+
+'Open a text file of computer names
+'with one computer name per line
+Set oTS = oFS.OpenTextFile("C:\computers.txt")
+
+'go through the text file
+Do Until oTS.AtEndOfStream
+ 'get the next computer name
+ 'store it in variable strCompname
+strCompname = oTS.ReadLine
+		WshShell.Run "C:\Windows\System32\shutdown.exe -m \\" & strCompname & " -s -c " & Chr(34) & strWarning & Chr(34) & " -t " & strDelay	'Replace the "-r" switch with "-s" to make the computers shutdown instead
+Loop
+'close the text file
+oTS.Close

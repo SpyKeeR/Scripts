@@ -1,0 +1,22 @@
+Option Explicit
+Dim objShell, intShutdown
+Dim strShutdown, strAbort
+
+' -s = shutdown, -t 120 = 2 minutes, -f = force programs to close
+strShutdown = "shutdown.exe -s -t 120 -f"
+set objShell = CreateObject("WScript.Shell")
+objShell.Run strShutdown, 0, false
+
+'go to sleep so message box appears on top
+WScript.Sleep 100
+
+' Input Box to abort shutdown
+intShutdown = (MsgBox("Cet ordinateur se coupe dans 2 minutes. Voulez-vous annuler cet arrêt?",vbYesNo+vbExclamation+vbApplicationModal,"Oui, annuler cet arrêt."))
+If intShutdown = vbYes Then
+' Abort Shutdown
+strAbort = "shutdown.exe -a"
+set objShell = CreateObject("WScript.Shell")
+objShell.Run strAbort, 0, false
+End if
+
+Wscript.Quit

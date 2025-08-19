@@ -1,0 +1,26 @@
+'Set Objects
+Set oShell = CreateObject( "WScript.Shell" )
+Set objFSO = CreateObject("Scripting.FileSystemObject")
+SET WshShell = createObject("WScript.shell")
+Const intForReading = 1
+Const intForWriting = 2
+Const intForAppending = 8
+ServerShare = "\\ServerName\UserLogins$\" 'Requires Users Full Read/Write Access
+CurrentSession = ""
+
+'Get Username & Workstation
+UserID=oShell.ExpandEnvironmentStrings("%UserName%")
+WorkstationID=oShell.ExpandEnvironmentStrings("%ComputerName%")
+
+'Check If Login Session Is Correct To Workstation & User'
+If objFSO.FileExists (ServerShare & UserID & ".txt") Then
+	Set objFile = objFSO.OpenTextFile(ServerShare & UserID & ".txt", intForReading, False)
+	' Read the first line if the file is not empty
+	CurrentSession = objFile.ReadLine
+	objFile.Close
+	If CurrentSession = WorkstationID then
+		objFSO.DeleteFile(ServerShare & WorkstationID & ".txt")
+		objFSO.DeleteFile(ServerShare & UserID & ".txt")
+	End if
+
+End If
