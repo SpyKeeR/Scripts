@@ -1,0 +1,379 @@
+﻿Install /
+Vérification de /etc/apt/sources.list.
+Mise à jour des paquets > apt-get update && apt-get upgrade
+Installation du serveur SSH > apt-get install openssh-server
+Installation du serveur WEB Nginx : apt-get install nginx
+Configuration de nginx globale : nano /etc/nginx/nginx.conf 
+Installation de php5-fpm + php5-mysql : apt-get install php5-fpm php5-mysql
+Configuration du php.ini de php fpm : nano /etc/php5/fpm/php.ini 
+
+Décommenter la ligne cgi.fix_pathinfo = 0; et la passer à 0. (Pour le bien du lien PHP-FPM/Nginx)
+Et rajouter (Demandé par dotclear):
+;
+; Safe Mode
+;
+safe_mode = Off
+magic_quotes_gpc = Off
+magic_quotes_runtime = Off
+
+Reload de la configuration de php-fpm par :
+/etc/init.d/php5-fpm reload
+
+Rajout au sein du server Block default de nginx dans /etc/nginx/sites-available/default la conf PHP : 
+
+        location ~ \.php$ {
+                fastcgi_split_path_info ^(.+\.php)(/.+)$;
+                # NOTE: You should have "cgi.fix_pathinfo = 0;" in php.ini
+
+                # With php5-cgi alone:
+                #fastcgi_pass 127.0.0.1:9000;
+                # With php5-fpm:
+                fastcgi_pass unix:/var/run/php5-fpm.sock;
+                fastcgi_index index.php;
+                fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+                include fastcgi_params;
+        }
+
+Faites un test de configuration NGINX : 
+
+nginx -t
+
+Reload du serveur nginx avec la commande : 
+
+/etc/init.d/nginx reload		
+		
+		
+Création du dossier www dans /var 
+Chown du www/ avec les groupes/users www-data.		
+		
+Installation de mysql-server/Client : 
+
+apt-get install mysql-server mysql-client
+
+Un invité demande le mot de passe assigné au super admin.
+
+Création de la base de donnée pour dotclear : 
+
+mysql -u root -p 
+Password : ******
+
+create database dotclear;
+
+Création de l'utilisateur lié à la base dotclear : 
+
+grant usage on *.* to dotclearuser@localhost identified by '*****PASSWORD******';
+
+
+Donner les privilèges à cet utilisateur sur la base :
+
+grant all privileges on dotclear.* to dotclearuser@localhost ;
+
+Téléchargez DotClear : 
+
+cd /var/www/
+wget http://download.dotclear.net/latest.tar.gz
+tar xvzf latest.tar.gz
+mv dotclear/* ../
+
+Assigner le groupe/proprio de ces fichiers vers www-data :
+
+chown -R www-data:www-data /var/www/
+
+chmod -R 775 /var/www/cache
+chmod -R 775 /var/www/public
+
+Il ne reste plus qu'à naviguer vers la machine, dotclear devrait nous rediriger vers le script d'install. Sinon, se diriger vers : http://x.x.x.x/install/index.php
+
+Il s'en suis une étape de connexion à la base de donnée, rentrez alors les différentes informations de connexions du SQL.
+
+Si cela passes, il reste une étape de création du premier administrateur, et vous vous retrouvez sur le panel admin.
+
+
+Retirer le Widget de Moteur de recherche pour tous /
+
+
+Allez dans le fichier PHP situé dans /var/www/plugins/widgets/ s'appelant _default_widgets.php :
+
+
+Situer les lignes : 
+
+
+$__widgets->create('search',__('Search engine'),array('defaultWidgets','search'),null,'Search engine form');
+$__widgets->search->setting('title',__('Title (optional)').' :',__('Search'));
+$__widgets->search->setting('homeonly',__('Display on:'),0,'combo',
+			array(__('All pages') => 0, __('Home page only') => 1, __('Except on home page') => 2));
+$__widgets->search->setting('content_only',__('Content only'),0,'check');
+$__widgets->search->setting('class',__('CSS class:'),'');
+$__widgets->search->setting('offline',__('Offline'),1,'check');
+
+
+Les commenter, puis descendre tout en bas du _default_widgets.php pour régler les widgets par défaut lors de création de blogs, situer cette ligne : 
+
+$__default_widgets['nav']->append($__widgets->search);
+
+La commenter aussi, pour éviter la génération des modules de recherches lors de la création des nouveaux blogs.
+
+
+Connectez-vous à l'espace d'administration DotClear se trouvant sur /admin/ : 
+
+Se diriger vers about:config, puis sur l'onglet paramètres généraux /
+
+Placer les champs :
+
+pings_active : NON
+allow_comments : NON
+Blog_TimeZone : Europe/Paris
+comments_nofollow : NON
+enable_html_filter : NON
+enable_xmlrpc : NON
+lang : fr
+theme : dcBootstrap
+
+Configurer l'URL du blog par défaut en rajoutant toujours le chemin "index.php?" aprés le domaine.
+
+Installer phpmyAdmin, ne saisir aucun serveur WEB a configurer, la conf du /etc/nginx/sites-available/default juste aprés devrait faire l'affaire.
+
+Changer les thèmes par l'archive des thèmes préparés s'apellant themes.tar.gz
+Permissions des dossiers : 754
+Chown -R www-data dessus.
+
+Faites un chmod du signature.html de trouvant le theme default pour éviter ton edition : 
+
+chmod -w signature.html
+
+Faites aussi un chmod -w de tous les _footer.html des thèmes. (dossier tpl de chaque thème)
+
+Déposez le contenu de l'archive workflow-formulaire.tar.gz contenant le Work-Flow, le panel Admin et le formulaire a la racine du /var/www :
+
+Permissions Dossiers :
+
+404.html : 755
+admdem/ : 755
+css/ : 755
+domains.ini : 640
+error/ : 755
+fonts/ : 755
+form2.php : 755
+form.php : 755
+img/ : 755
+index.php : 644
+js/ : 755
+Themes/ : 754
+favicon.ico : 644
+
+chown -R www-data sur /var/www ;
+
+Ecrasez l'index.php de dotclear par celui contenu dans l'archive workflow-formulaire.tar.gz
+
+Dans le fichier domains.ini que vous venez de déposer, 
+Rajoutez-y le domaine lié au blog ID du blog par défaut tel que : 
+***DOMAINE***=*BlogID*
+www.leweb.link=default
+
+
+Configuration nginx : 
+Remplacer le /etc/nginx/sites-available/default par ceci : 
+
+===================================================================================================================
+
+#Server Default qui recup aussi accés par IP
+server {
+
+
+        listen 80;
+        server_name 193.104.36.130;
+        root /var/www/error/;
+        index 404.html;
+        error_page 404  /404.html;
+        location  / {
+
+                try_files $uri $uri/ 404.html;
+
+        }
+}
+server {
+        listen 80 default_server;
+        server_name _;
+        root  /var/www/;
+        index index.html index.php;
+
+        error_page 404 /404.html;
+        location  /404.html {
+        internal;
+        }
+
+
+        location ~ \.ini$ {
+        allow 127.0.0.1;
+        deny all;
+        }
+
+        location ~ \.php$ {
+                fastcgi_split_path_info ^(.+\.php)(/.+)$;
+                # NOTE: You should have "cgi.fix_pathinfo = 0;" in php.ini
+
+                # With php5-cgi alone:
+                #fastcgi_pass 127.0.0.1:9000;
+                # With php5-fpm:
+                fastcgi_pass unix:/var/run/php5-fpm.sock;
+                fastcgi_index index.php;
+                fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+                include fastcgi_params;
+        }
+
+       location / {
+
+
+                # First attempt to serve request as file, then
+                # as directory, then fall back to displaying a 404.
+                try_files $uri $uri/ /index.php;
+                # Uncomment to enable naxsi on this location
+                # include /etc/nginx/naxsi.rules
+        }
+        location ^~ /admdem/  {
+                auth_basic "Acces aux demandes restreint.";
+                auth_basic_user_file /var/www/admdem/.htpasswd;
+                index admin.php;
+                try_files $uri $uri/ /admin.php;
+                allow 78.230.188.27/32;
+                allow 193.33.223.16/28;
+                deny all;
+                location ~ \.php$ {
+                        fastcgi_split_path_info ^(.+\.php)(/.+)$;
+                        # NOTE: You should have "cgi.fix_pathinfo = 0;" in php.ini
+
+                        # With php5-cgi alone:
+                        #fastcgi_pass 127.0.0.1:9000;
+                        # With php5-fpm:
+                        fastcgi_pass unix:/var/run/php5-fpm.sock;
+                        fastcgi_index index.php;
+                        include fastcgi_params;
+                }
+
+#         location ~ \.php$ {
+#       allow 78.230.188.27/32;
+#       allow 193.33.223.19/28;
+#       deny all;
+#       }
+        }
+
+        location /doc/ {
+                alias /usr/share/doc/;
+                autoindex on;
+                allow 127.0.0.1;
+                allow ::1;
+                deny all;
+        }
+                #Themes en commun avec install default
+        location /themes/ {
+               alias /var/www/themes/;
+              try_files $uri $uri/;
+             }
+
+        #Panel Admin des Blog's
+        location /admin {
+                alias /var/www/admin/;
+                try_files $uri $uri/ /index.php;
+        }
+        location ~ ^/admin(.+\.php)$ {
+                alias /var/www/admin$1;
+                fastcgi_pass unix:/var/run/php5-fpm.sock;
+                fastcgi_index index.php;
+                fastcgi_param SCRIPT_FILENAME /var/www/admin$1;
+                include fastcgi_params;
+        }
+
+    location /phpmyadmin {
+           root /usr/share/;
+           index index.php index.html index.htm;
+           location ~ ^/phpmyadmin/(.+\.php)$ {
+                   root /usr/share/;
+                   fastcgi_pass unix:/var/run/php5-fpm.sock;
+                   fastcgi_index index.php;
+                   fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+                   include fastcgi_params;
+           }
+           location ~* ^/phpmyadmin/(.+\.(jpg|jpeg|gif|css|png|js|ico|html|xml|txt))$ {
+                   root /usr/share/;
+           }
+           allow 78.230.188.27/32;
+           allow 193.33.223.16/28;
+           deny all;
+    }
+#       location /phpmyadmin {
+#                alias /usr/share/phpmyadmin;
+#                try_files $uri $uri/ /index.php;
+#               index index.php;
+#               }
+#        location ~ ^/admin(.+\.php)$ {
+#                alias /usr/share/phpmyadmin$1;
+#                fastcgi_pass unix:/var/run/php5-fpm.sock;
+#                fastcgi_index index.php;
+#                fastcgi_param SCRIPT_FILENAME /usr/share/phpmyadmin$1;
+#                include fastcgi_params;
+#        }
+  }
+
+Accédez au Phpmyadmin, afin de préparer la base pour le Work-Flow : 
+
+Le work-flow à besoin d'une table au sein de la base dotclear, cette table doit s'apeller dc_demands, voici le SQL qui permet de la construire : 
+
+
+
+CREATE TABLE IF NOT EXISTS dc_demands (
+  `type` varchar(15) NOT NULL,
+  id_demand int(10) NOT NULL AUTO_INCREMENT,
+  `name` varchar(150) NOT NULL,
+  Subname varchar(255) NOT NULL,
+  Association varchar(255) NOT NULL,
+  Adress varchar(255) NOT NULL,
+  Telephone varchar(10) NOT NULL,
+  Domain varchar(150) NOT NULL,
+  Mail varchar(100) NOT NULL,
+  SIREN varchar(9) NOT NULL,
+  Declaration varchar(25) NOT NULL,
+  Validated tinyint(1) NOT NULL,
+  `date` datetime NOT NULL,
+  PRIMARY KEY (id_demand)
+) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+
+
+Il ne reste plus qu'à poser le Script Bash :  
+
+Récuperer le contenu de www-scripts.tar.gz
+Poser le dossier www-scripts au sein de /var.
+Sur le fichier newblog.sh :
+Chmod 775 dessus.
+Chown www-data:www-data dessus.
+
+
+Petit ajout, afin de permettre les modifications de blogs par les administrateurs de ces derniers :
+
+Remplacer le fichier /var/www/admin/blog_pref.php par celui dans le dossier Ressources de la clef.
+
+Petit ajout encore, afin de permettre la modification des thèmes par les administrateurs,
+
+Remplacez le fichier /var/www/inc/core/class.dc.modules par celui dans le dossier Ressources de la clef.
+
+
+
+
+Petit + : 
+
+le newblog.sh logges ses actions dans /var/log/newblog.log
+Créez le fichier : 
+touch /var/log/newblog.log
+chown www-data:www-data /var/log/newblog.log 
+chmod 644 /var/log/newblog.log
+
+Alias permettant d'avoir le log des actions de newblog.sh : 
+alias newblog-log='tail -f /var/log/newblog.log'
+
+---------------------------------------------------------
+
+Ne pas hésiter à dire à php de faire passer ses mails par smtp.artefact.fr
+ 
+---------------------------------------------------------------------
+Source d'info : http://fr.dotclear.org/documentation/2.0/admin/clean-install
+http://fr.dotclear.org/documentation/2.0/admin/install
+http://www.google.fr/

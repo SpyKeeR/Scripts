@@ -1,0 +1,45 @@
+        location / {
+                # First attempt to serve request as file, then
+                # as directory, then fall back to displaying a 404.
+                try_files $uri $uri/ /index.html;
+                # Uncomment to enable naxsi on this location
+                # include /etc/nginx/naxsi.rules
+        }
+
+
+        location /doc/ {
+                alias /usr/share/doc/;
+                autoindex on;
+                allow 127.0.0.1;
+                allow ::1;
+                deny all;
+        }
+                #Themes en commun avec install default
+        location /themes {
+                alias /var/www/themes/;
+		try_files $uri $uri/;
+                }
+	#Panel Admin des Blog's
+	location /admin {
+  		alias /var/www/admin/;
+  		try_files $uri $uri/ /index.php;
+	}
+	location ~ ^/admin(.+\.php)$ {
+  		alias /var/www/admin$1;
+                fastcgi_pass unix:/var/run/php5-fpm.sock;
+  		fastcgi_index index.php;
+  		fastcgi_param SCRIPT_FILENAME /var/www/admin$1;
+  		include fastcgi_params;
+	}
+
+        location ~ \.php$ {
+                fastcgi_split_path_info ^(.+\.php)(/.+)$;
+                # NOTE: You should have "cgi.fix_pathinfo = 0;" in php.ini
+
+                # With php5-cgi alone:
+                #fastcgi_pass 127.0.0.1:9000;
+                # With php5-fpm:
+                fastcgi_pass unix:/var/run/php5-fpm.sock;
+                fastcgi_index index.php;
+                include fastcgi_params;
+        }

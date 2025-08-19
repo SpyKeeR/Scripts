@@ -1,0 +1,29 @@
+Afin de supprimer proprement un blog suivez ces étapes :
+
+Connectez vous au panel Admin par http://www.leweb.in/admin/
+
+Dirigez-vous dans le menu : Règlages systèmes/Utilisateurs
+
+Suppression de l'utilisateur dans le Panel admin Dotclear.
+
+Dirigez-vous dans le menu : Réglages systèmes/Blogs
+
+Cliquez sur le blog a supprimer
+
+Vous arrivez dans les paramètres du Blog, tout en bas se trouves le bouton de suppression (Il ne faut pas avoir le blog de séléctionné dans le menu déroulant du haut)
+
+Une confirmation de mot de passe Admin est demandé lors de la supression de Blog.
+
+Allez sur PhpMyAdmin
+
+Dirigez vous dans la base dotclear et dans la table dc_demands, supprimez la demande associé au blog.
+
+Ensuite, connectez vous en ssh au serveur lewebin.artefact.fr
+
+Dirigez-vous dans /var/www , listez le contenu
+
+Supprimer le dossier nommé comme l'id du blog www******
+
+Editez le fichier domains.ini et supprimez la ligne associé au blog à supprimer.
+
+C'est fini.

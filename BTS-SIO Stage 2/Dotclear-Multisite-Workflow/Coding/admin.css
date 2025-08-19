@@ -1,0 +1,10 @@
+#absolute_table{
+    position: absolute;
+    overflow: auto;
+}
+#resultat_agent{
+    overflow-y: auto;
+    overflow-x: none;
+    height: 100%;
+    width: 332%;
+}
