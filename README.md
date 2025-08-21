@@ -1,4 +1,4 @@
-# ⚙️ Scripts-playground
+# ⚙️ Scripts
 
 ## 🇫🇷 Français  
 
