@@ -58,13 +58,13 @@ function Write-ErrorLog {
     Write-Log $Message "ERROR"
 }
 
-function Pause-Confirm {
+function Wait-ForConfirmation {
     param($Message="Appuyez sur Entrée pour continuer...")
     Read-Host $Message | Out-Null
 }
 
 # ===================== Vérifications initiales =====================
-function Ensure-ADModule {
+function Test-ADModule {
     try {
         Import-Module ActiveDirectory -ErrorAction Stop
         Write-Log "Module ActiveDirectory chargé."
@@ -75,7 +75,7 @@ function Ensure-ADModule {
     }
 }
 
-function Is-CurrentUser-Privileged {
+function Test-CurrentUserPrivileged {
     # Vérifie si l'utilisateur courant est membre d'un groupe administratif fréquent
     try {
         $me = "$($env:USERDOMAIN)\$($env:USERNAME)"
@@ -100,7 +100,7 @@ function Test-OUExists {
         if ([string]::IsNullOrWhiteSpace($OUdn)) { return $false }
         $params = @{Identity = $OUdn; ErrorAction = 'Stop'}
         if ($Server) { $params.Server = $Server }
-        $ou = Get-ADOrganizationalUnit @params
+        Get-ADOrganizationalUnit @params
         return $true
     } catch {
         return $false
@@ -126,7 +126,7 @@ function Test-CustomAttributeExists {
     }
 }
 
-function Ensure-AttributeOnUser {
+function Set-UserAttribute {
     param(
         [Parameter(Mandatory)][string]$UserDNorSam,
         [Parameter(Mandatory)][string]$AttrName,
@@ -151,7 +151,7 @@ function Ensure-AttributeOnUser {
 }
 
 # ===================== Chargement et parsing CSV =====================
-function Prompt-Settings {
+function Set-Settings {
     Write-Host "=== Configuration initiale ===" -ForegroundColor Cyan
     $Settings.CSVPath = Read-Host "Chemin vers le CSV (ex: \\CD01\Partage\Exports\CSV\users.csv)"
     $Settings.CSVDelimiter = Read-Host "Délimiteur CSV (par défaut ';')" ; if (-not $Settings.CSVDelimiter) { $Settings.CSVDelimiter = ";" }
@@ -165,12 +165,12 @@ function Prompt-Settings {
     $Settings.UPNSuffix = Read-Host "Suffixe UPN (ex: @entreprise.local)"
     $Settings.ForcePwdChange = Read-Host "Demander changement mot de passe à la 1ere connexion ? (y/n)" 
     $Settings.ForcePwdChange = $Settings.ForcePwdChange -match '^(y|Y)'
-    $pwd = Read-Host "Mot de passe par défaut (utiliser un mot de passe fort)"; if ($pwd) { $Settings.DefaultPassword = $pwd }
+    $ReadDefaultPassword = Read-Host "Mot de passe par défaut (utiliser un mot de passe fort)"; if ($ReadDefaultPassword) { $Settings.DefaultPassword = $ReadDefaultPassword }
     $Settings.DryRun = Read-Host "Mode tir à blanc (Doit être true pour tests) (y/n)"; $Settings.DryRun = $Settings.DryRun -match '^(y|Y)'
     $Settings.MailboxScriptPath = Read-Host "Chemin script création BAL (laisser vide si pas utilisé)"
 }
 
-function Validate-Settings {
+function Test-Settings {
     Write-Host "Validation des paramètres..." -ForegroundColor Cyan
     $ok = $true
     if (-not (Test-Path $Settings.CSVPath)) {
@@ -184,7 +184,7 @@ function Validate-Settings {
 
     if (-not (Test-ADModule)) { $ok = $false }
 
-    if (-not (Is-CurrentUser-Privileged)) {
+    if (-not (Test-CurrentUserPrivileged)) {
         Write-Host "ATTENTION: l'utilisateur courant ne semble pas disposer de droits admin. Le script peut échouer." -ForegroundColor Yellow
         Write-Log "Attention : pas de droits admin détectés."
     }
@@ -206,7 +206,7 @@ function Validate-Settings {
     return $ok
 }
 
-function Load-CSVData {
+function Import-CSVData {
     try {
         $csv = Import-Csv -Path $Settings.CSVPath -Delimiter $Settings.CSVDelimiter -ErrorAction Stop
         Write-Log "Import CSV : $($csv.Count) lignes."
@@ -218,7 +218,7 @@ function Load-CSVData {
 }
 
 # ===================== Prévisualisation / Planification =====================
-function Preview-Plan {
+function Show-Plan {
     param($csvData)
     $plan = @()
     foreach ($row in $csvData) {
@@ -240,7 +240,7 @@ function Preview-Plan {
 }
 
 # ===================== Création / Mise à jour d'un user =====================
-function CreateOrUpdate-User {
+function Set-UserAccount {
     param(
         [Parameter(Mandatory)][psobject]$Row,
         [switch]$WhatIf
@@ -275,8 +275,8 @@ function CreateOrUpdate-User {
             if ($WhatIf) { $setParams['WhatIf'] = $true }
             Set-ADUser @setParams
             # Custom attributes
-            if ($Settings.CustomAttr1 -and $Row.CustomAttr1) { Ensure-AttributeOnUser -UserDNorSam $existing.DistinguishedName -AttrName $Settings.CustomAttr1 -Value $Row.CustomAttr1 -WhatIf:$WhatIf }
-            if ($Settings.CustomAttr2 -and $Row.CustomAttr2) { Ensure-AttributeOnUser -UserDNorSam $existing.DistinguishedName -AttrName $Settings.CustomAttr2 -Value $Row.CustomAttr2 -WhatIf:$WhatIf }
+            if ($Settings.CustomAttr1 -and $Row.CustomAttr1) { Set-UserAttribute -UserDNorSam $existing.DistinguishedName -AttrName $Settings.CustomAttr1 -Value $Row.CustomAttr1 -WhatIf:$WhatIf }
+            if ($Settings.CustomAttr2 -and $Row.CustomAttr2) { Set-UserAttribute -UserDNorSam $existing.DistinguishedName -AttrName $Settings.CustomAttr2 -Value $Row.CustomAttr2 -WhatIf:$WhatIf }
             # Groups
             foreach ($g in $Settings.GroupsDefault) {
                 try {
@@ -329,8 +329,8 @@ function CreateOrUpdate-User {
                 $newUser = [PSCustomObject]@{ SamAccountName = $sam; DistinguishedName = "CN=$displayName,$($Settings.OU)" }
             }
 
-            if ($Settings.CustomAttr1 -and $Row.CustomAttr1) { Ensure-AttributeOnUser -UserDNorSam $newUser.DistinguishedName -AttrName $Settings.CustomAttr1 -Value $Row.CustomAttr1 -WhatIf:$WhatIf }
-            if ($Settings.CustomAttr2 -and $Row.CustomAttr2) { Ensure-AttributeOnUser -UserDNorSam $newUser.DistinguishedName -AttrName $Settings.CustomAttr2 -Value $Row.CustomAttr2 -WhatIf:$WhatIf }
+            if ($Settings.CustomAttr1 -and $Row.CustomAttr1) { Set-UserAttribute -UserDNorSam $newUser.DistinguishedName -AttrName $Settings.CustomAttr1 -Value $Row.CustomAttr1 -WhatIf:$WhatIf }
+            if ($Settings.CustomAttr2 -and $Row.CustomAttr2) { Set-UserAttribute -UserDNorSam $newUser.DistinguishedName -AttrName $Settings.CustomAttr2 -Value $Row.CustomAttr2 -WhatIf:$WhatIf }
 
             foreach ($g in $Settings.GroupsDefault) {
                 try {
@@ -369,15 +369,15 @@ function CreateOrUpdate-User {
 }
 
 # ===================== Exécution (boucle principale) =====================
-function Execute-Import {
+function Invoke-Import {
     param(
         [switch]$WhatIf
     )
     Write-Log "Début d'exécution. Mode WhatIf=$WhatIf"
-    $csv = Load-CSVData
+    $csv = Import-CSVData
     if (-not $csv) { Write-ErrorLog "CSV vide ou non lisible. Arrêt."; return }
 
-    $plan = Preview-Plan -csvData $csv
+    $plan = Show-Plan -csvData $csv
 
     Write-Host "`nRésumé :"
     Write-Host "Créations prévues: $($plan | Where-Object {$_.Action -eq 'Create'} | Measure-Object).Count"
@@ -400,7 +400,7 @@ function Execute-Import {
     foreach ($row in $csv) {
         # pour robustesse, on catch au niveau boucle
         try {
-            CreateOrUpdate-User -Row $row -WhatIf:($WhatIf)
+            Set-UserAccount -Row $row -WhatIf:($WhatIf)
         } catch {
             Write-ErrorLog "Erreur générale sur la ligne SamAccountName=$($row.SamAccountName) : $_"
         }
@@ -438,7 +438,7 @@ function Show-Menu {
 }
 
 # ===================== Boot menu loop =====================
-if (-not (Ensure-ADModule)) {
+if (-not (Test-ADModule)) {
     Write-Host "Module ActiveDirectory requis. Installez RSAT. Sortie." -ForegroundColor Red
     exit 1
 }
@@ -447,43 +447,43 @@ do {
     $choice = Show-Menu
     switch ($choice) {
         '1' {
-            Prompt-Settings
+            Set-Settings
             Write-Log "Paramètres mis à jour via menu."
-            Pause-Confirm
+            Wait-ForConfirmation
         }
         '2' {
-            if (Validate-Settings) { Write-Host "Validation OK" -ForegroundColor Green } else { Write-Host "Validation échouée. Voir logs." -ForegroundColor Red }
-            Pause-Confirm
+            if (Test-Settings) { Write-Host "Validation OK" -ForegroundColor Green } else { Write-Host "Validation échouée. Voir logs." -ForegroundColor Red }
+            Wait-ForConfirmation
         }
         '3' {
-            if (-not (Validate-Settings)) { Write-Host "Validation échouée, corrigez les paramètres." -ForegroundColor Red; Pause-Confirm; continue }
-            $csv = Load-CSVData
+            if (-not (Test-Settings)) { Write-Host "Validation échouée, corrigez les paramètres." -ForegroundColor Red; Wait-ForConfirmation; continue }
+            $csv = Import-CSVData
             if ($csv) {
-                $plan = Preview-Plan -csvData $csv
+                $plan = Show-Plan -csvData $csv
             }
-            Pause-Confirm
+            Wait-ForConfirmation
         }
         '4' {
-            if (-not (Validate-Settings)) { Write-Host "Validation échouée, corrigez les paramètres." -ForegroundColor Red; Pause-Confirm; continue }
+            if (-not (Test-Settings)) { Write-Host "Validation échouée, corrigez les paramètres." -ForegroundColor Red; Wait-ForConfirmation; continue }
             $Settings.DryRun = $true
-            Execute-Import -WhatIf
-            Pause-Confirm
+            Invoke-Import -WhatIf
+            Wait-ForConfirmation
         }
         '5' {
-            if (-not (Validate-Settings)) { Write-Host "Validation échouée, corrigez les paramètres." -ForegroundColor Red; Pause-Confirm; continue }
+            if (-not (Test-Settings)) { Write-Host "Validation échouée, corrigez les paramètres." -ForegroundColor Red; Wait-ForConfirmation; continue }
             Write-Host "!!! MODE REEL !!! Ne lancez ceci qu'après tests et sauvegardes." -ForegroundColor Red
             $ok = Read-Host "Confirmez exécution réelle (tapez OUI pour continuer)"
-            if ($ok -ne "OUI") { Write-Host "Abandon."; Pause-Confirm; continue }
+            if ($ok -ne "OUI") { Write-Host "Abandon."; Wait-ForConfirmation; continue }
             $Settings.DryRun = $false
-            Execute-Import -WhatIf:$false
-            Pause-Confirm
+            Invoke-Import -WhatIf:$false
+            Wait-ForConfirmation
         }
         '6' {
             Write-Host "Sortie..."
         }
         default {
             Write-Host "Choix invalide."
-            Pause-Confirm
+            Wait-ForConfirmation
         }
     }
 } while ($choice -ne '6')
