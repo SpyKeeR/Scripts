@@ -7,8 +7,8 @@ find $rep -maxdepth 1 -name "*.$extension" -printf "%f \n"
 echo -e "\n"
 read -p "Quel fichier voulez-vous traiter? " fic
 nblign=$(wc -l $rep/$fic | cut -d " " -f 1)
-debut=$(head $rep/$fic)
-fin=$(tail $rep/$fic)
+debut=$(head -n 2 $rep/$fic)
+fin=$(tail -n 2 $rep/$fic)
 echo -e "\n"
 echo "CARACTERISTIQUES de $fic : "
 echo -e "\n"
